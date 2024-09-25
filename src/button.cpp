@@ -10,14 +10,14 @@ Button::Button(int x, int y, int width, int height) {
     this->selectedColor = BLUE;
 }
 
-void Button::Print(Vector2 pos) {
-    DrawRectangleRec(this->points, this->Hover(pos));
+void Button::Print() {
+    DrawRectangleRec(this->points, this->bg);
 
-    DrawRectangleLinesEx(this->points, (select) ? 1 : 3 , this->selectedColor);
+    DrawRectangleLinesEx(this->points, (select) ? 3 : 1.5 , this->selectedColor);
 
     if(this->name != nullptr) {
-        int textWidht = MeasureText(this->name, 2);
-        DrawText(TextFormat("%s", this->name), ((this->points.width - textWidht) / 2) + this->points.x, (this->points.height / 2) + this->points.y, 2, WHITE);
+        int textWidht = MeasureText(this->name, 15);
+        DrawText(TextFormat("%s", this->name), ((this->points.width - textWidht) / 2) + this->points.x, ((this->points.height - 15) / 2) + this->points.y, 15, WHITE);
     }
 }
 
@@ -33,8 +33,8 @@ void Button::SetSelect(bool select) {
     this->select = select;
 }
 
-Color Button::Hover(Vector2 pos) {
-    return ((Click(pos)) ? this->bg : Color{0,0,0,0});
+void Button::Hover(Vector2 pos) {
+    this->bg = ((Click(pos)) ? Color{200,200,200, 100} : Color{0,0,0,0});
 }
 
 bool Button::Click(Vector2 pos) {

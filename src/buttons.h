@@ -13,8 +13,8 @@ class Button {
     void SetName(char*);
     void SetSelectedColor(Color);
     void SetSelect(bool);
-    virtual void Print(Vector2);
-    Color Hover(Vector2);
+    virtual void Print();
+    void Hover(Vector2);
     bool Click(Vector2);
 };
 
@@ -26,6 +26,7 @@ class ButtonColor : public Button {
     ButtonColor(int,int,int,int, Color, float);
     ~ButtonColor() { }
 
-    void SetColor();
-    void GetColor();
+    void SetColor(Color);
+    Color GetColor();
+    void Print() override;
 };

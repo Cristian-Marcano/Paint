@@ -1,6 +1,6 @@
 #include <raylib.h>
 #include "line.h"
-// #include "buttons.h"
+#include "menu.h"
 
 int Absolute(int number) {
 	return (number < 0) ? -number : number;
@@ -46,12 +46,9 @@ int main() {
 
 	static bool lineInserting = false;
 
-	// char *btnNameSelect = "Select";
-
 	Line **lines = new Line*[nLines], *line = nullptr;
 
-	// Button *btn = new Button(30, 30, 100, 50);
-	// btn->SetName(btnNameSelect);
+	Menu *menu = new Menu(windowWidth, 75, GRAY);
 
 	InitWindow(windowWidth, windowHeight, "Lineas 😲");
 
@@ -61,13 +58,16 @@ int main() {
     SetTargetFPS(60);
 	do {
 		//* 1. Event Handling
-		if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !lineInserting) {
+		if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !lineInserting && !menu->Click(GetMousePosition())) {
 			line = new Line(GetMousePosition());
 			lineInserting = true;
-		} else if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && lineInserting) {
+		} else if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && lineInserting  && !menu->Click(GetMousePosition()))  {
 			line->SetPosEnd(GetMouseX(), GetMouseY());
 			lineInserting = false;
 		}
+
+		menu->select->Hover(GetMousePosition());
+		menu->draw->Hover(GetMousePosition());
 
 		if(line != nullptr && !lineInserting) {
 			lines = PushLine(lines, nLines);
@@ -83,10 +83,10 @@ int main() {
 		
 		//* 3. Drawing
 		BeginDrawing();
-			ClearBackground(GRAY);
-			// btn->Print(GetMousePosition());
-			for(int i = 0; i < nLines; i++) AlgorithmDDA(lines[i]->GetPosInit(), lines[i]->GetPosEnd(), WHITE);
-			if(line != nullptr) AlgorithmDDA(line->GetPosInit(), line->GetPosEnd(), WHITE);
+			ClearBackground(RAYWHITE);
+			menu->Print();
+			for(int i = 0; i < nLines; i++) AlgorithmDDA(lines[i]->GetPosInit(), lines[i]->GetPosEnd(), BLACK);
+			if(line != nullptr) AlgorithmDDA(line->GetPosInit(), line->GetPosEnd(), BLACK);
 		EndDrawing();
 
 	} while (!WindowShouldClose());
