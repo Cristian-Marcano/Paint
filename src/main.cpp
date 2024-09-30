@@ -1,6 +1,7 @@
 #include <raylib.h>
 #include "line.h"
 #include "menu.h"
+#include "select.h"
 
 int Absolute(int number) {
 	return (number < 0) ? -number : number;
@@ -26,8 +27,8 @@ void AlgorithmDDA(Vector2 posInit, Vector2 posEnd, Color color) {
 	}
 }
 
-Line *CreateLine(Vector2 posInit, Vector2 posEnd) {
-	return new Line(posInit, posEnd);
+Line *CreateLine(Vector2 posInit, Vector2 posEnd, Color color) {
+	return new Line(posInit, posEnd, color);
 }
 
 Line **PushLine(Line **lines, int &n) {
@@ -36,7 +37,7 @@ Line **PushLine(Line **lines, int &n) {
 	Line **newLines = new Line*[n];
 
 	for(int i = 0; i < n - 1; i++) 
-		newLines[i] = CreateLine(lines[i]->GetPosInit(), lines[i]->GetPosEnd());
+		newLines[i] = CreateLine(lines[i]->GetPosInit(), lines[i]->GetPosEnd(), lines[i]->GetColor());
 	
 	return newLines;
 }
@@ -44,31 +45,100 @@ Line **PushLine(Line **lines, int &n) {
 int main() {
 	static int windowWidth = 1280, windowHeight = 720, nLines = 0;
 
-	static bool lineInserting = false;
+	static bool lineInserting = false, draw = true, selection = false, drag = false;
+
+	static Color lineColor = Color{0, 0, 0, 255};
 
 	Line **lines = new Line*[nLines], *line = nullptr;
 
-	Menu *menu = new Menu(windowWidth, 75, GRAY);
+	Menu *menu = new Menu(windowWidth, 75, DARKGRAY);
+	ButtonColor *btnColor = nullptr;
+
+	Select *select = nullptr;
 
 	InitWindow(windowWidth, windowHeight, "Lineas 😲");
 
     SetWindowMinSize(854, 480);
     SetWindowState(FLAG_WINDOW_RESIZABLE);
 
-    SetTargetFPS(60);
+    SetTargetFPS(520);
 	do {
 		//* 1. Event Handling
-		if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !lineInserting && !menu->Click(GetMousePosition())) {
-			line = new Line(GetMousePosition());
-			lineInserting = true;
-		} else if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && lineInserting  && !menu->Click(GetMousePosition()))  {
-			line->SetPosEnd(GetMouseX(), GetMouseY());
-			lineInserting = false;
+
+		//** Menu
+		if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && menu->Click(GetMousePosition())) {
+			ButtonColor *btnColorPressed;
+			if(menu->draw->Click(GetMousePosition())) {
+				draw = true;
+				selection = false;
+				select = nullptr;
+			} else if(menu->select->Click(GetMousePosition())) {
+				draw = false;
+				selection = true;
+			} else if((btnColorPressed = menu->ClickColors(GetMousePosition())) != nullptr) {
+				lineColor = btnColorPressed->GetColor();
+				btnColorPressed->SetSelect(true);
+				if(btnColor != nullptr) btnColor->SetSelect(false);
+				btnColor = btnColorPressed;
+			}
+			menu->draw->SetSelect(draw);
+			menu->select->SetSelect(selection);
+		}
+
+		//** Drag
+		if(select != nullptr && select->Hover(GetMousePosition())) {
+			SetMouseCursor(9);
+			if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) && select->Hover(GetMousePosition()) && !menu->Click(GetMousePosition())) {
+				drag = true;
+				Vector2 newMouse = GetMousePosition();
+				Rectangle rec = select->GetPoints();
+				int cx = (rec.x + (rec.x + rec.width)) /2, cy = (rec.y + (rec.y + rec.height)) / 2;
+				for(int i = 0; i < nLines; i++) if(lines[i]->GetSelected()) {
+					Vector2 posInitLine = lines[i]->GetPosInit(), posEndLine = lines[i]->GetPosEnd();
+					Vector2 offset = { newMouse.x - cx, newMouse.y - cy };
+					posInitLine.x += offset.x;
+					posInitLine.y += offset.y;
+					posEndLine.x  += offset.x;
+					posEndLine.y += offset.y;
+					lines[i]->SetPosInit(posInitLine);
+					lines[i]->SetPosEnd(posEndLine);
+					select->SetInitPoints(Vector2{rec.x + offset.x , rec.y + offset.y});
+					select->SetEndPoints(Vector2{rec.x + rec.width + offset.x, rec.y + rec.height + offset.y});
+				}
+			} else drag = false;
+		} else if(!menu->Click(GetMousePosition())) SetMouseCursor(3);
+		else SetMouseCursor(1);
+
+		//** Selection
+		if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !menu->Click(GetMousePosition()) && selection && !drag) {
+			if(select == nullptr) {
+				select = new Select(LIGHTGRAY);
+				select->SetInitPoints(GetMousePosition());
+			} else select->SetEndPoints(GetMousePosition());
+		} else if(IsMouseButtonUp(MOUSE_BUTTON_LEFT) && !menu->Click(GetMousePosition()) && selection && !drag) {
+			if(select != nullptr) for(int i = 0; i < nLines; i++) {
+				if(select->SelectLine(lines[i]->GetPosInit(), lines[i]->GetPosEnd())) lines[i]->SetSelected(true);
+				else lines[i]->SetSelected(false);
+				// select = nullptr;
+
+			}
+		}
+
+		//** Draw
+		if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !menu->Click(GetMousePosition()) && draw) {
+			if(!lineInserting) {
+				line = new Line(GetMousePosition(), lineColor);
+				lineInserting = true;
+			} else {
+				line->SetPosEnd(GetMousePosition());
+				lineInserting = false;
+			}
 		}
 
 		menu->select->Hover(GetMousePosition());
 		menu->draw->Hover(GetMousePosition());
-
+		
+		//** Add Line in queue
 		if(line != nullptr && !lineInserting) {
 			lines = PushLine(lines, nLines);
 
@@ -78,15 +148,17 @@ int main() {
 		}
 
 		//* 2. Updating Position
-		if(lineInserting) 
-			line->SetPosEnd(GetMouseX(), GetMouseY());
+		if(lineInserting && !menu->Click(GetMousePosition())) 
+			line->SetPosEnd(GetMousePosition());
 		
 		//* 3. Drawing
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 			menu->Print();
-			for(int i = 0; i < nLines; i++) AlgorithmDDA(lines[i]->GetPosInit(), lines[i]->GetPosEnd(), BLACK);
-			if(line != nullptr) AlgorithmDDA(line->GetPosInit(), line->GetPosEnd(), BLACK);
+			if(select != nullptr) select->Print();
+			for(int i = 0; i < nLines; i++) 
+				AlgorithmDDA(lines[i]->GetPosInit(), lines[i]->GetPosEnd(), (lines[i]->GetSelected()) ? Color{50, 50, 255, 255} : lines[i]->GetColor());
+			if(line != nullptr) AlgorithmDDA(line->GetPosInit(), line->GetPosEnd(), line->GetColor());
 		EndDrawing();
 
 	} while (!WindowShouldClose());

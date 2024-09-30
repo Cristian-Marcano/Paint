@@ -3,7 +3,7 @@
 
 class Menu {
   private:
-    int nColors = 0; 
+    int nColors = 10; 
     Vector2 size;
     Color bg;
   public:
@@ -14,4 +14,5 @@ class Menu {
     Button *select, *draw;
     void Print();
     bool Click(Vector2);
+    ButtonColor *ClickColors(Vector2);
 };
